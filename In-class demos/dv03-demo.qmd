@@ -158,17 +158,18 @@ ggplot(gm2007,
            y = lifeExp)) +
   geom_point(alpha = .3)
 ```
+
 ```{r}
 gm2007 <- gm2007 |> 
   mutate(log10gdp = log10(gdpPercap))
 ```
+
 ```{r}
 ggplot(gm2007,
        aes(x = log10gdp,
            y = lifeExp)) +
   geom_point(alpha = .3)
 ```
-
 
 ```{r}
 gm2007 |> 
@@ -222,7 +223,6 @@ ggplot(anscombe_long,
 ```
 
 Without looking at the data, this would be **very** hard to notice!
-
 
 ## A football (soccer) example
 
