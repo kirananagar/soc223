@@ -1,0 +1,152 @@
+---
+title: "DV-05"
+author: "Kiran Nagar"
+format: html
+embed-resources: true
+editor: visual
+---
+
+# DV-05
+
+```{r}
+#| message: false
+library(tidyverse)
+# Read in the data 
+wncaa <- read_csv("https://raw.githubusercontent.com/vaiseys/dav-course/main/Data/wncaa.csv")
+
+# Glimpse the data 
+glimpse(wncaa)
+```
+
+## Question 1
+
+```{r}
+champs <- wncaa %>% filter(tourney_finish == "Champ")
+champs_percentages <- champs %>% 
+  group_by(school) %>% 
+  summarise(total_wins = n(),
+         champ_percentage = (total_wins/nrow(champs)*100)) %>% 
+  arrange(-total_wins)
+```
+
+```{r}
+win_plot <- ggplot(champs_percentages,
+                   aes(x = reorder(school, total_wins),
+                       y = champ_percentage)) +
+  geom_col() + 
+  coord_flip() +
+  labs(title = "Percentage of Championships by School",
+                    x = "School Name",
+                    y = "Percentage of Winshare")
+win_plot
+```
+
+I see that there is a huge percentage of the winshare dominated by two schools---UCONN and Tennessee, with \>50% of NCAA Championships taken home between the two universities.
+
+## Question 2
+
+```{r}
+champ_names <- unique(champs$school)
+winners <- wncaa %>% 
+  filter(school %in% champ_names)
+```
+
+We have successfully created a dataset holding only our "top teams"
+
+```{r}
+winners <- winners %>% 
+  mutate(mean_seed = mean(seed),
+         .by = school)
+
+seed_plot <- ggplot(winners, aes(x = reorder(school, -mean_seed),
+                                 y = seed)) + 
+  geom_boxplot(outlier.shape = NA) + 
+  geom_jitter(alpha = 0.2) +
+  coord_flip() +
+  labs(title = "Seedings for Top All-Time WNCAA Teams",
+       x = "School",
+       y = "Seed")
+seed_plot
+
+
+
+```
+
+I am not too surprised by this list, as it confirms that the two biggest winners of all time (UCONN and Tennessee) had seedings that were very high, and never lower than around 6.
+
+```{r}
+seed_plot_violin <- ggplot(winners, aes(x = reorder(school, mean_seed),
+                                 y = seed)) + 
+  geom_violin() + 
+  geom_jitter(alpha = 0.2) +
+  coord_flip() +
+  labs(title = "Seeds for Top All-Time WNCAA Teams",
+       x = "School",
+       y = "Seed")
+seed_plot_violin
+```
+
+It is better for showing what the actual highest and lowest seeding was for each school, but it doesn't help with visualizing the distribution of the data. One big reason for this is that there aren't enough observations per school, so the "violin" shape is pretty much flat.
+
+```{r}
+seed_plot_point <- ggplot(winners, aes(x = reorder(school, -mean_seed),
+                                 y = seed)) + 
+  geom_point(alpha=0.2) +
+  coord_flip() +
+  labs(title = "Seeding for Top All-Time WNCAA Teams",
+       x = "School",
+       y = "Seed")
+seed_plot_point
+```
+
+Because the rankings are integers, there is a lot of overlap and we can't tell how many times a seed appears in the dataset for a school (outside of the darkness of the point).
+
+## Question 4
+
+```{r}
+winners_mean_sd <- winners %>% 
+  group_by(school) %>% 
+  summarise(across(where(is.numeric),
+                   list(mean = mean,
+                        sd = sd)))
+
+win_percent_plot <- ggplot(winners_mean_sd, 
+                           aes(x = reorder(school, -seed_mean),
+                                 y = reg_percent_mean)) + 
+  geom_point() +
+  coord_flip() +
+  labs(title = "Average Win Percentage by School",
+       x = "School",
+       y = "Avg. Win %")
+win_percent_plot
+```
+
+The results show that UCONN have been dominant for a long time and have lost very few games, whereas Tennessee (although they've won at an equal clip to UCONN) have gone through some losing seasons, too. The lowest regular season win percentage was from Texas A&M, at 73.98%.
+
+```{r}
+win_percent_plot_2 <- ggplot(winners_mean_sd, 
+                           aes(x = reorder(school, -seed_mean),
+                                 y = reg_percent_mean)) + 
+  geom_pointrange(mapping = aes(ymin = reg_percent_mean - reg_percent_sd, ymax = reg_percent_mean + reg_percent_sd)) +
+  coord_flip() +
+  labs(title = "Average Win Percentage by School",
+       x = "School",
+       y = "Avg. Win %")
+win_percent_plot_2
+```
+
+The school with the narrowest interval is Texas A&M. This means that their average win percentage has stayed closest to the all-time mean, without ever getting too high or getting too low. One question that I would ask to follow up would be how long ago was A&M's Women's BB team started? A school whose team has had relatively fewer seasons compared to other schools would have a narrower interval than those who had been around a long time and made it to the tournament a ton.
+
+```{r}
+win_percent_plot_3 <- ggplot(winners_mean_sd, 
+                           aes(x = reorder(school, -seed_mean),
+                                 y = reg_percent_mean)) + 
+  geom_linerange(mapping = aes(ymin = reg_percent_mean - reg_percent_sd, ymax = reg_percent_mean + reg_percent_sd)) +
+  coord_flip() +
+  labs(title = "Average Win Percentage by School",
+       x = "School",
+       y = "Avg. Win %")
+win_percent_plot_3
+```
+
+You can make the same plot using `geom_linerange`, but you'd have to add a `geom_point()` object that plots the mean on top of the line intervals. At that point, it's much easier to just use `geom_pointrange`, because it builds the point in without having to add it.
