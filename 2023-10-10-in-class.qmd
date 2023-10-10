@@ -1,0 +1,85 @@
+---
+title: "2023-10-10-in-class"
+author: "Kiran Nagar"
+embed-resources: true
+format: html
+editor: visual
+---
+
+## In-Class Practice 10/10
+
+```{r}
+library(tidyverse)
+library(moderndive)
+library(ggthemes)
+library(patchwork)
+theme_set(theme_light())
+```
+
+```{r}
+data(evals)
+glimpse(evals)
+```
+
+I'm going to predict whether the age of a professor impacts their evaluations.
+
+```{r}
+d <- evals %>% 
+  rename(bty = bty_avg,
+         sex = gender)
+library(skimr)
+```
+
+```{r}
+ggplot(d,
+       aes(x = score)) +
+  geom_histogram(boundary = 4,
+                 binwidth = .25,
+                 color = "white")
+
+ggplot(d,
+       aes(x = age)) +
+  geom_histogram(boundary = 4,
+                 binwidth = 4,
+                 color = "white")
+```
+
+```{r}
+ggplot(d,
+       aes(x = age,
+           y = score)) +
+  geom_jitter(alpha = 0.2)
+```
+
+```{r}
+d %>% get_correlation(score ~ age)
+```
+
+```{r}
+mod1 <- lm(score ~ age,
+           data = d)
+broom::tidy(mod1)
+```
+
+Now I'm doing the same thing, but for the percentage of the class that filled out the evaluations.
+
+```{r}
+d <- d %>% mutate(pct_filled = ((cls_did_eval/cls_students)*100))
+```
+
+```{r}
+d %>% get_correlation(score ~ pct_filled)
+```
+
+```{r}
+mod2 <- lm(score ~ pct_filled,
+           data = d)
+broom::tidy(mod2)
+```
+
+```{r}
+ggplot(d,
+       aes(x = pct_filled,
+           y = score)) +
+  geom_jitter(alpha = 0.2)
+```
