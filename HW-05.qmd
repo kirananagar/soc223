@@ -1,0 +1,139 @@
+---
+title: "HW-05"
+author: "Kiran Nagar"
+format: html
+embed-resources: true
+editor: visual
+---
+
+## Question 1
+
+```{r}
+#| message: false
+library(tidyverse)
+exercise_data <- read_csv("https://raw.githubusercontent.com/vaiseys/dav-course/main/Data/visualize_data.csv")
+glimpse(exercise_data)
+```
+
+I don't think that there will be a significant correlation between BMI and exercise, because modern medicine has deemed BMI as an unreliable predictor of fitness.
+
+```{r}
+cor(exercise_data$Exercise, exercise_data$BMI)
+```
+
+```{r}
+ggplot(exercise_data, aes(x=Exercise, y=BMI)) + geom_jitter()
+```
+
+Oh no! I've been had. Fair play---I solemnly swear to always use common sense with my datasets.
+
+## Question 2
+
+```{r}
+#| message: false
+library(causact)
+glimpse(corruptDF)
+```
+
+`CPI2017` is an integer score that represents the perceived level of corruption within the public sector. The range of this score is from 0-100, where 0 means that a country is seen as extremely corrupt and 100 means a country is seen as very just. `HDI2017` is a metric that measures achievement within human development across countries. It is an index that comes from an average of life expectancy, education, and income.
+
+## Question 3
+
+```{r}
+ggplot(corruptDF,
+       aes(x=CPI2017,
+           y=HDI2017)
+       ) + geom_jitter()
+```
+
+There appears to be a direct relationship between `HDI2017` and `CPI2017`, meaning when one goes up, the other does as well.
+
+## Question 4
+
+```{r}
+ggplot(corruptDF,
+       aes(x=CPI2017,
+           y=HDI2017)
+       ) + geom_jitter() + geom_smooth(method = "lm",
+              se = FALSE,
+              linetype = "dashed")
+```
+
+```{r}
+ggplot(corruptDF,
+       aes(x=CPI2017,
+           y=HDI2017)
+       ) + geom_jitter() + geom_smooth(method = "gam")
+```
+
+## Question 5
+
+```{r}
+ggplot(corruptDF,
+       aes(x = CPI2017,
+           y = HDI2017,
+           color = region,
+           fill = region)) + geom_jitter() + geom_smooth(method = "gam") 
+```
+
+I think I can see some kind of relationship between the perceived level of corruption and the HDI, but it is much too cluttered to be able to glean any meaningful insights from the plot. I am going to use a `facet_wrap` to try and display things more clearly.
+
+```{r}
+ggplot(corruptDF,
+       aes(x = CPI2017,
+           y = HDI2017,
+           color = region,
+           fill = region)) + 
+  geom_jitter() + 
+  geom_smooth(method = "gam") +
+  facet_wrap(vars(region))
+  
+```
+
+## Question 6
+
+```{r}
+ggplot(corruptDF,
+       aes(x = CPI2017,
+           y = HDI2017,
+           color = region,
+           fill = region)) + 
+  geom_jitter() + 
+  geom_smooth(method = "gam") +
+  facet_wrap(vars(region)) +
+  scale_x_reverse()
+```
+
+## Question 7
+
+```{r}
+ggplot(corruptDF,
+       aes(x = CPI2017,
+           y = HDI2017,
+           color = region,
+           fill = region)) + 
+  geom_jitter() + 
+  geom_smooth(method = "gam") +
+  facet_wrap(vars(region)) +
+  labs( title = "Perceived Corruption v. Human Development Index",
+        caption = "Sources: Transparency International, United Nations")
+```
+
+## Question 8
+
+In order to save this plot as a file to be printed or sent to a supervisor, I would utilize the `ggsave` function. The code would look something like this:
+
+```{r}
+p_out <- ggplot(corruptDF,
+       aes(x = CPI2017,
+           y = HDI2017,
+           color = region,
+           fill = region)) + 
+  geom_jitter() + 
+  geom_smooth(method = "gam") +
+  facet_wrap(vars(region)) +
+  labs( title = "Perceived Corruption v. Human Development Index",
+        caption = "Sources: Transparency International, United Nations")
+
+ggsave(filename = "HDICDI2017.png", plot = p_out)
+```

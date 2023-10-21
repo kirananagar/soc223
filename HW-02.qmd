@@ -1,0 +1,109 @@
+---
+title: "HW 2"
+author: "Kiran Nagar"
+format: html
+embed-resources: true
+editor: visual
+---
+
+```{r}
+library (tidyverse)
+
+olympics  <- read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-07-27/olympics.csv')
+glimpse(olympics)
+table(olympics$medal)
+```
+
+## Question 1
+
+```{r}
+gold_medalists <- olympics %>% 
+  filter(medal == "Gold")
+nrow(gold_medalists)
+```
+
+The resulting dataset has 13,372 rows.
+
+## Question 2
+
+```{r}
+ggplot(data = gold_medalists, aes(x = year, y = age)) + geom_jitter() 
+
+```
+
+The age of participants has gotten much younger over the years, with the lower end of the age range getting much denser toward the right side of this scatter plot. One solution to overplotting would be to adjust the transparency of the points with the `alpha` argument of `geom_point()`.
+
+```{r}
+ggplot(data = gold_medalists, aes(x = year, y = age)) + geom_jitter(alpha = 0.2)
+```
+
+## Question 3
+
+```{r}
+us_medals <- gold_medalists %>% 
+  filter(noc == "USA") %>% 
+  group_by(year) %>% 
+  summarise(num_medals = n())
+```
+
+```{r}
+ggplot(data = us_medals, aes(x = year, y = num_medals)) + 
+  geom_line()
+```
+
+The most successful year was 1984, when the U.S. won 190 Gold Medals. I think the wiggly nature of the line towards the end is because up until 1992, the Winter and Summer games were held in the same year. In 1994, the Winter Olympics were held in Norway and established the two-year cadence between Olympic Games that we are used to today.
+
+## Question 4
+
+```{r}
+two_events <- gold_medalists %>%
+  filter(
+    event == "Gymnastics Men's Individual All-Around"  |
+      event == "Gymnastics Women's Individual All-Around" |
+      event == "Athletics Women's 100 metres"   |
+      event == "Athletics Men's 100 metres"
+  ) 
+gymnastics <- two_events %>%
+  filter(
+    event == "Gymnastics Men's Individual All-Around"  |
+      event == "Gymnastics Women's Individual All-Around"
+  )
+ggplot(data = gymnastics, aes(x=age)) + geom_histogram(binwidth = 2)
+```
+
+The gymnasts tend to be on the younger side, specifically 22-28. They also start very young, with ages as young as 14 represented.
+
+```{r}
+ggplot(data = gymnastics, aes(x=age)) + 
+  geom_histogram(binwidth = 2) +
+  facet_wrap(~sex)
+```
+
+The male gymnasts tend to be older.
+
+## Question 5
+
+```{r}
+ggplot(data = two_events, aes(x = event, y = height)) +
+  geom_boxplot()
+  
+```
+
+The Men's 100m is clearly the tallest event, and also has a decent amount of variance. The median is on the higher end of the distribution. Women's Gymnastics is by far the shortest. The other two events are squarely in the middle.
+
+## Question 6
+
+```{r}
+us_medalists <- gold_medalists %>% 
+  filter(noc == "USA")
+
+us_medalists_gender <- us_medalists %>% 
+  group_by(year, sex) %>% 
+  summarise(num_medals = n())
+
+ggplot( data = us_medalists_gender, aes(x = year, y = num_medals, fill = sex)) + 
+  geom_bar(stat = "identity", position = "dodge")
+
+```
+
+One pattern that jumps out to me is the explosion of medals for women's sports starting around 1975---I believe one reason for this could be the passage of Title IX in 1972 in the U.S.

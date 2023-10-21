@@ -1,0 +1,215 @@
+---
+title: "HW-MD05"
+author: "Kiran Nagar"
+embed-resources: true
+format: html
+editor: visual
+---
+
+# HW-MD 05
+
+```{r}
+#| message: false
+library(tidyverse)
+twitch_data <- read_csv('twitchdata-update.csv')
+```
+
+I read in the data as instructed.
+
+```{r}
+library(janitor)
+twitch_data <- clean_names(twitch_data)
+colnames(twitch_data)
+```
+
+They look so much better! Let's analyze.
+
+## Question 1
+
+```{r}
+top_five <- twitch_data %>% 
+  sample_n(size = 5) %>% 
+  select(channel,
+         average_viewers,
+         followers)
+top_five
+```
+
+It seems that followers correlates to number of average viewers generally, which makes sense to me. I'm curious to know if the relationship is linear or if the viewer count has diminishing returns at some point.
+
+```{r}
+twitch_data %>% 
+  select(average_viewers, followers) %>% 
+  summary()
+  
+```
+
+There is a huge range in minimum and maximum `average_viewers` as well as `followers`, but there seem to be some outliers at the high end due to the 3rd Quartile value compared to the max.
+
+```{r}
+ggplot(twitch_data, aes(x = followers,
+                        y = average_viewers)) +
+  geom_jitter(alpha = 0.2) +
+  labs(title = "Average Viewer Count vs. Total Followers",
+       x = "Total Follower Count",
+       y = "Average Viewers")
+```
+
+```{r}
+ggplot(twitch_data, aes(x = followers,
+                        y = average_viewers)) +
+  geom_jitter(alpha = 0.2) +
+  scale_x_log10() +
+  scale_y_log10() +
+  labs(title = "Average Viewer Count vs. Total Followers",
+       x = "Total Follower Count",
+       y = "Average Viewers",
+       caption = "Note: Both axes have been scaled by log10")
+```
+
+Now, it looks like there is a strong relationship between total follower count and average viewers. I could envision a linear regression that would be close to a great number of these points---that being said, I could also envision an exponential curve that would model this data closely. This will be something to pay attention to.
+
+```{r}
+twitch_data <- twitch_data %>% 
+  mutate(log_viewers = log10(average_viewers), 
+         log_followers = log10(followers))
+```
+
+## Question 2
+
+```{r}
+fit1 <- lm(log_viewers ~ log_followers,
+           data = twitch_data)
+broom::tidy(fit1)
+fit1
+
+```
+
+$1.1^{0.59} = 1.0578$
+
+A 10% increase in followers is associated with a 5.78% increase in the average number of viewers.
+
+## Question 3
+
+```{r}
+pred_data <- broom::augment(fit1)
+
+glimpse(pred_data)
+```
+
+```{r}
+pred_data %>% 
+  ggplot(aes(x = log_followers, 
+             y = log_viewers)) +
+  geom_jitter(alpha = 0.4) + 
+  geom_line(aes(x = log_followers, 
+                y = .fitted), 
+            col = "orange") + 
+  theme_minimal() +
+  labs(subtitle = "Fitted Model and Raw Data", 
+       title = "Followers & Average Viewership", 
+       x = "log(followers)", 
+       y = "log(viewers)")
+```
+
+It looks like the model describes the relationship fairly well---however, I look at the right half of the graph, and I feel like I see the data points above the curve getting further and further from our model line. This gives me pause, and I'm curious to see the residuals.
+
+```{r}
+ggplot(pred_data,
+       aes(x = log_followers,
+           y = .resid)) +
+  geom_point(alpha=0.4) +
+  geom_smooth(method=lm,
+              col="orange") +
+  geom_hline(yintercept = 0,
+             col="cyan") +
+  labs(title = "Residual Plot of log(followers)",
+       x = "log(followers)",
+       y = "Residual")
+```
+
+There are some large residuals, although generally I think that the model appears to do a very good job in relation to our data. The large residuals happen at very low values of followers, as well as at relatively high values of followers. However, I don't think that there is a pattern in the residuals that would indicate a poor modeling.
+
+## Question 4
+
+```{r}
+language_sample <- twitch_data %>% 
+  sample_n(size = 5) %>% 
+  select(channel,
+         language,
+         average_viewers)
+language_sample
+```
+
+Picking 5 random elements doesn't seem to do us much good here, since it's hard to see if there are any trends between languages. All that I can see is that the channels that I got seemed to be in the same general range as each other. One thing that might help me to understand the data would be to plot how many channels of each language are in the data via a bar chart.
+
+```{r}
+ggplot(twitch_data,
+       aes(x = language)) +
+  geom_bar() +
+  coord_flip() +
+  labs(title = "Twitch Channels by Language",
+       x = "Language",
+       y = "Number of Channels")
+
+ggplot(twitch_data,
+       aes(x = language,
+           y = average_viewers)) +
+  geom_point(alpha = 0.4) +
+  coord_flip() +
+  labs(title = "Channel Average Viewers by Language",
+       x = "Language",
+       y = "Average Viewers")
+```
+
+Wow---English channels dominate in their share of the dataset. I wonder how this might impact the modeling. There is some interesting distribution when you examine some of the other languages.
+
+```{r}
+twitch_data %>% select(average_viewers) %>% 
+  summary()
+```
+
+```{r}
+skimr::skim(twitch_data %>% group_by(language) %>% select(average_viewers))
+```
+
+Some of the other languages have more piece-wise distributions than English. That is, they are less continuous. However, I do see that most languages have a pretty solid block of channels at the low end of the spectrum.
+
+## Question 5
+
+```{r}
+twitch_data <- twitch_data %>% 
+  mutate(language = as.factor(language), 
+         language = relevel(language, ref = "English"))
+```
+
+```{r}
+fit2 <- lm(average_viewers ~ language,
+           data = twitch_data)
+broom::tidy(fit2)
+fit2
+```
+
+Arabic, Russian, and Spanish are the three languages whose coefficients indicate that they have more average viewers than English. The prediction is fairly accurate---another thing to consider is the fact that there were so many more English channels than there were other languages. I would be curious how that might change if we were to take the top 1000 channels in each country and perform the same analysis.
+
+## Question 6
+
+```{r}
+resid_data <- broom::augment(fit2)
+ggplot(resid_data,
+       aes(x = average_viewers,
+           y = .resid,
+           color = language)) +
+  geom_point(alpha=0.4) +
+  scale_x_log10() +
+  geom_smooth(method=lm,
+              col="orange") +
+  geom_hline(yintercept = 0,
+             col="cyan") +
+  labs(title = "Residual Plot of log(followers) by language",
+       x = "log(followers)",
+       y = "Residual")
+  
+```
+
+It looks like there are two outliers---it appears to be the English and Russian versions of the channel `dota2i.`
