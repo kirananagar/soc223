@@ -1,0 +1,172 @@
+---
+title: "HW-MD06.2"
+author: "Kiran Nagar"
+embed-resources: true
+format: html
+editor: visual
+editor_options: 
+  chunk_output_type: inline
+---
+
+# HW-MD06.2
+
+```{r}
+#| message: false
+library(tidyverse)
+library(moderndive)
+theme_set(theme_minimal())
+```
+
+```{r}
+data(bikes, package = "bayesrules")
+glimpse(bikes)
+
+```
+
+We loaded in our data using the normal process.
+
+## Question 0
+
+There are 500 rows in the dataset. Each row corresponds to the ridership data for one single day. The dataset goes from January 2011 to December 2012. Interestingly, there does not seem to be ridership data for any day in July either year, except for July 21 2012. I doubt this will affect our data since we aren't going to be looking at date as a variable. There is a chance it could mess with our temperature data, since the hottest part of the year could be excluded. This could be especially true because for some reason, we also only have 8 total August observations across both years. The highest number of rides on a given day is 6946. Highest wind speed is 34 mph.
+
+## Question 1
+
+```{r}
+get_correlation(rides ~ temp_feel,
+                data = bikes) %>% round(2)
+```
+
+The correlation between number of rides and what the temperature feels like is 0.58. This means that when the `temp_feel` goes up by one standard deviation, we'd expect rides to increase by 0.58 of a standard deviation.
+
+```{r}
+get_correlation(rides ~ windspeed,
+                data = bikes) %>% round(2)
+```
+
+The correlation between number of rides and what the windspeed (in miles per hour) is -0.19. This means that when `windspeed` goes up by one standard deviation, we would expect rides to go down by 0.19 of a standard deviation.
+
+## Question 2
+
+```{r}
+bikes <- bikes %>% 
+  mutate(wind_kph = windspeed * 1.61)
+```
+
+```{r}
+get_correlation(windspeed ~ wind_kph,
+                data = bikes)
+```
+
+As expected, the correlation between windspeed in MPH and windspeed in KPH is exactly 1. This Is because we are simply performing a unit conversion, so every KPH point is 1.6x of its MPH counterpart, and vice versa. In other words, we can graph this relationship using the equation:
+
+$$ KPH = 1.61 (MPH) + 0$$
+
+and have every single point be on the line. (Note that I include the y-intercept = 0 to match the standard format for a line $$y = mx + b$$ and clearly illustrate that 0mph = 0kph).
+
+## Question 3
+
+```{r}
+mph_model <- lm(rides ~ windspeed,
+                data = bikes)
+get_regression_table(mph_model) %>% 
+  select(term, estimate)
+```
+
+```{r}
+kph_model <- lm(rides ~ wind_kph,
+                data = bikes)
+get_regression_table(kph_model) %>% 
+  select(term, estimate)
+```
+
+We can see that both of the intercepts for the two sets are the same, 4205.065. This makes total sense to me when we think about the fact that the intercept is saying "when the variable I'm using to predict `rides` is equal to 0, what will our prediction for `rides` be?" With the knowledge that 0mph=0kph, it makes sense that the intercepts are the same. The slopes, however, will be different from each other. Because of what we know about the conversion between MPH and KPH, I would expect for the coefficients for wind_kph and wind_mph to be off from each other by a factor of approximately 1.61. And, in fact, this is true as shown by
+
+$$
+-55.523 / -34.48600 = 1.6100
+$$
+
+## Question 4
+
+The predicted ridership for a day with 20MPH wind would be
+
+$$
+rides = 4205.065 - 34.486 (20MPH) = 3,515.345
+$$
+
+So we would predict 3,515 riders (let's agree we can't have .345 of a bike rider). For 20KPH wind, our prediction would be
+
+$$
+rides = 4205.065 - 55.523(20KPH) = 3094.605
+$$
+
+We would predict 3,095 riders on a 20KPH wind day. This makes sense to me, since 20MPH\>20KPH in velocity and would result in much less favorable riding conditions.
+
+## Question 5
+
+```{r}
+bikes <- bikes %>% 
+  mutate(temp_c = (temp_feel-32)*(5/9))
+```
+
+We convert Fahrenheit into Celsius by the following formula $$C = (F-32) * \frac{5}{9}$$.
+
+```{r}
+mult_model <- lm(rides ~ wind_kph + temp_c,
+                 data = bikes)
+get_regression_table(mult_model) %>% 
+  select(term, estimate)
+```
+
+For every 1°C increase in temperature, the model expects an increase of 143 in ridership. For every 1kph increase in wind speed, the model expects a decrease of 20 in ridership.
+
+The intercept is telling us that expected ridership on a dead-still day with a temperature of 0°C (32°F) would be 942.
+
+## Question 6
+
+```{r}
+pred_df <- tibble(
+  situation = 1:3,
+  temp_c = c(25, 15, 10),
+  wind_kph = c(15, 5, 40)
+)
+
+pred_df$predicted_ridership <- predict(mult_model, newdata = pred_df)
+print(pred_df)
+```
+
+I expanded upon the code snippet in the assignment and got ridership predictions of 4226 riders, 2992 riders, and 1581 riders for situations 1, 2, and 3 respectively.
+
+## Question 7
+
+```{r}
+bikes <- bikes %>% mutate(weekend = as.factor(weekend))
+weekend_model <- lm(rides ~ wind_kph + weekend + temp_c,
+                    data = bikes)
+get_regression_table(weekend_model) %>%
+  select(term, estimate)
+```
+
+Above, we can see the coefficient values for our `weekend_model`. The intercept, `wind_kph`, and `temp_c` coefficients function in the same way as above. The coefficient for `weekend`, however, is telling us that on a weekend day, our model expects ridership to be 714 riders fewer than on a weekday.
+
+## Question 8
+
+```{r}
+library(ggeffects)
+predictions <- ggpredict(weekend_model,
+                         terms = c("weekend"),
+                         ci_level = NA) # don't think about confidence intervals yet (soon!)
+predictions
+```
+
+Holding the temperature and the wind speed average, the expected ridership for a weekend day is 2970 riders. On a weekday, the expected ridership is 3683 riders.
+
+## Question 9
+
+```{r}
+bikerides <- predict(weekend_model)
+residuals <- bikes$rides - bikerides
+broom::tidy(residuals)
+residuals
+```
+
+The largest residual that I found happened on day 439, with an absolute value of 3490.346. This is the day that my model was the [most]{.underline} wrong. I checked the original data and found that the date of day 439 was October 29, 2012. On that day, Hurricane Sandy was getting ready to make landfall on the Mid-Atlantic Coast of the USA. Washington, D.C. shut down large areas of the city to ready themselves for the incoming weather, which explains the incredibly low actual ridership for that day---a mere 20 riders.
