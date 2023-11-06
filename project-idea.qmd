@@ -1,0 +1,12 @@
+---
+title: "project-idea"
+author: "Kiran Nagar"
+format: html
+editor: visual
+---
+
+# Project Idea
+
+I am a huge soccer fan, so I think that I would like to use a dataset related to the English Premier League. Specifically, I would like to examine the relationship between a player's performance in a year to the increase in their transfer market value. I am planning to use Transfermarkt's data which is hosted on Kaggle, and I am going to try and develop a heuristic for each of goalkeepers, defenders, midfielders, and forwards so that I can measure their improvement against their transfer value. I will also (if possible) attempt to correct for the increase in the market as a whole. Here is the source of the dataset that I am thinking I'll use: <https://www.kaggle.com/datasets/davidcariboo/player-scores>.
+
+I also spoke to three other students about what their final project topics. First, Will is trying to find a dataset which provides some information about the manner by which the newest generation gets their entertainment, and how that is going to affect consumption going forward. Sophie is trying to identify a correlation between the caliber of university that one attends and their eventual salary. Ava is looking at consumer data and seeing what the retail trends might be.
