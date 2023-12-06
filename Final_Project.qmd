@@ -1,0 +1,21 @@
+---
+title: "Final Project"
+author: "Kiran Nagar"
+embed-resources: true
+format: html
+editor: visual
+editor_options: 
+  chunk_output_type: console
+---
+
+# Data Selection
+
+I think that I am going to need data sets that show:
+
+1.  PL standings since 2000
+
+2.  Squad value/Transfer value since 2000
+
+    1.  Maybe all player data? To also look at age etc?
+
+        1.  This could get too large, but I could filter by GP at a given club in a season \> 5 to solve for this

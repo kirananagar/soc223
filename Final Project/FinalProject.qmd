@@ -1,0 +1,179 @@
+---
+title: "Exploring Goals vs. Points in the EPL: DAV Final Project"
+author: "Kiran Nagar"
+embed-resources: true
+format: html
+echo: false
+message: false
+toc: true
+warning: false
+editor: visual
+editor_options: 
+  chunk_output_type: console
+---
+
+------------------------------------------------------------------------
+
+```{r}
+library(moderndive)
+library(tidyverse)
+library(worldfootballR)
+library(broom)
+theme_set(theme_light())
+```
+
+# Introduction
+
+For this project, I decided that I would like to examine a couple of topics that are very central to squad planning in soccer these days: balancing between veterans and young prospects, and picking between an attacking style and a defensive one[^1]. To that end, I have decided to look at some data from `worldfootballR` relating to season-long statistics per team in the English Premier League since 2009-2010 (ending with the 2022-2023 season statistics so as to not include a partial season). I want to designate my outcome variable as points won in the league, and my explanatory variables are going to be average age of each squad and goals scored.
+
+[^1]: <https://theathletic.com/3516067/2022/08/21/age-profile-signings-premier-league/>
+
+```{r}
+england <- load_fb_big5_advanced_season_stats(stat_type = "standard", team_or_player= "team") %>%
+  filter(Team_or_Opponent == "team") %>%
+  filter(Season_End_Year != 2024) %>% 
+  filter(Comp == "Premier League") %>% 
+  select('Season_End_Year',
+    'Squad',
+    'Comp',
+    'Age',
+    'Gls')
+
+```
+
+```{r}
+prem_table <- fb_season_team_stats(country = "ENG", gender = "M", season_end_year = c(2010:2023), tier = "1st", stat_type = "league_table")
+
+prem_table <- prem_table %>% 
+  select('Competition_Name',
+          'Season_End_Year',
+          'Squad',
+          'Rk',
+          'Pts')
+
+prem_table <- prem_table %>% rename(Comp = Competition_Name)
+
+england <- inner_join(england, prem_table, by = c("Season_End_Year",
+                                                  "Squad",
+                                                  "Comp"))
+
+```
+
+# Data Exploration
+
+I want to graph the distribution of my variables. Do they look to be approximately normally distributed?
+
+```{r}
+# Histogram of Average Age Values
+ggplot(england, aes(x = Age)) + 
+  geom_histogram(binwidth = 0.5, center = 0, fill = "cornflowerblue", color = "black") + 
+  labs(title = "Distribution of Average Age", x = "Average Age", y = "Frequency") +
+  theme_minimal()
+
+# Histogram of Goals Scored
+ggplot(england, aes(x = Gls)) + 
+  geom_histogram(binwidth = 2, fill = "tomato", color = "black") + 
+  labs(title = "Distribution of Goals Scored", x = "Goals Scored", y = "Frequency") +
+  theme_minimal()
+
+# Histogram of Points
+ggplot(england, aes(x = Pts)) + 
+  geom_histogram(binwidth = 5, fill = "seagreen", color = "black") + 
+  labs(title = "Distribution of Points", x = "Points", y = "Frequency") +
+  theme_minimal()
+
+england_summary <- england %>%
+  summarize(Average_Points = mean(Pts, na.rm = TRUE),
+            Average_Age = mean(Age, na.rm = TRUE),
+            Total_Goals = sum(Gls, na.rm = TRUE))
+
+# Visualize summary statistics
+ggplot(england, aes(x = Age, y = Pts)) +
+  geom_point(aes(color = Gls)) +
+  geom_smooth(method = "lm", color = "blue", se = FALSE) +
+  labs(title = "Age vs. Points Scatter Plot", x = "Average Age", y = "Points", color = "Goals Scored") + scale_color_gradient(name = "Goals Scored", low = "green", high = "red") +
+  theme_minimal()
+```
+
+I think that these variables all appear to be relatively normally distributed. We do not need to apply any kind of transformation on the data, and we can proceed with testing a few different models against one another.
+
+# Choosing a Model
+
+Now, we are going to make three different models. Two simple regressions with Age and Gls, and then one multiple regression that includes an interaction term between Age and Goals. Using the AIC values, we'll pick our most appropriate model.
+
+```{r}
+# Model 1: Points against Age
+model1 <- lm(Pts ~ Age, data = england)
+
+# Model 2: Points against Goals
+model2 <- lm(Pts ~ Gls, data = england)
+
+# Model 3: Multiple regression with an interaction term
+model3 <- lm(Pts ~ Age * Gls, data = england)
+
+# Store models in a list for AIC comparison
+model_list <- list(model1, model2, model3)
+
+```
+
+```{r}
+# Extract AIC values
+aic_values <- sapply(model_list, AIC)
+
+# Create a data frame for visualization
+aic_df <- data.frame(Model = c("Age", "Goals", "Age:Goals Interaction"), AIC = aic_values)
+aic_df %>% knitr::kable()
+```
+
+Model 2 was the best, with an AIC value of 1919.429, so we're going to use it for the rest of our exploration.
+
+# Model Results
+
+```{r}
+coef_summary <- broom::tidy(model2, conf.int = TRUE)
+coef_summary %>% 
+  knitr::kable(caption = "Regression Coefficients and Hypothesis Testing")
+```
+
+# Interpreting the Regression Tables
+
+Based on our model, the regression equation for Points Earned is:$$\hat{Pts} = 4.17 + 0.955 \times Gls$$
+
+-   Here, the intercept (4.17) means that our model would predict that if a team scored 0 goals in a season, they would earn 4.17 points.
+
+-   For every one more goal that a team scores in a season, we would expect them to score an additional 0.955 points. This is an interesting coefficient, because it tends to suggest that 1 goal is worth roughly the equivalent of a tie (1 point) in practice.
+
+# Hypothesis Testing
+
+Using the output of my regression table, I can test my null hypothesis. The null hypothesis is that there is no relationship between the number of goals scored in a season and the number of points that a team earns in the season.
+
+There appears to be a positive relationship between the number of goals scored and the number of points they earned in a season $$$$ $\beta_g = 0.955$. This certainly appears to be a meaningful relationship because in our regression table above we see that:
+
+-   the 95% confidence interval for the goal slope is (0.9027968, 1.007301), which is entirely on the positive side
+
+-   the p-value is very small (\<0.01), so it means that there is much stronger evidence of our alternate hypothesis being true. That is, it indicates there is a relationship between the goals scored and the points taken in a season.
+
+# Residuals Analysis
+
+I conducted a residual analysis to see if there was any systematic pattern within the residuals for the statistical model that I ran. If there are patterns, then I cannot have confidence that my p-value and confidence interval above are correct.
+
+```{r}
+# Plotting residuals
+par(mfrow = c(2, 2))
+plot(model2)
+
+```
+
+Looking at these residuals, it appears that everything is distributed normally, and our model fits the data well. In the top left plot, which simply shows the residuals, we can see that there is no clear pattern and the points appear to be randomly clustered around our residual line. The other plots show my residuals in various different forms, but they all line up with a well-fit model. The top right, for example, is a QQ plot which shows the normality of a dataset. If the data is normally distributed, then the points will fall on or near the 45-degree diagonal reference line. We can see this is the case, and thus we can take confidence that our model is appropriate.
+
+# Discussion
+
+I found that there is a strong positive relationship between the number of goals scored and the number of points that are gained by the end of the season. That makes sense to me, since it seems natural that scoring more goals would lead to more favorable results overall. I was not sure, however, whether or not that effect would outweigh the importance of not conceding goals, so it's interesting that in the end our model suggested an increase of 1 goal scored should lead to an increase of approximately 1 point.
+
+## Data Limitations
+
+There were some potential limitations to our data, because we were only able to go back until 2010. This gave us a good snapshot, but I would be curious how the model would perform on a season back in 1995---were the teams as attacking as they are in today's game? I also would have liked to have gotten data for possession and seen the ramifications on goals scored, but that data was only available consistently going back to 2018.
+
+## Further Questions
+
+I enjoyed doing this analysis on the Premier League, and it is the league for which there is the most data available. However, I would be curious to see what the relationship looks like between goals and points in the other "Big 5" leagues in Europe. When I was doing some exploratory data visualization trying to figure out my research question, I plotted total goals scored in the Big 5 leagues since 2010, and I was surprised to see that the Bundesliga in particular was behind the other leagues. I would be very curious, then, to see what the effect of a single goal would be on point total in the Bundesliga or in the other leagues.

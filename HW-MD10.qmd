@@ -1,0 +1,58 @@
+---
+title: "HW-MD10"
+author: "Kiran Nagar"
+embed-resources: true
+format: html
+editor: visual
+editor_options: 
+  chunk_output_type: console
+---
+
+# HW-MD10
+
+First, we install our necessary libraries and then load in the data as instructed.
+
+```{r}
+#| message: false
+#| echo: false
+library(tidyverse)
+library(moderndive)
+theme_set(theme_minimal())
+```
+
+```{r}
+pitchers <- read_csv("./Data/Pitching.csv")
+glimpse(pitchers)
+```
+
+```{r}
+pitchers_cln <- pitchers %>% 
+  select(ERA, BAOpp, WP) %>% 
+  drop_na()
+```
+
+## Question 1
+
+Thinking about the fitted intercept and the slope of a regression as point estimates means that we are thinking of the values are our best single guesses with the sample data at hand. In the context of linear regression, the intercept represents the estimated variable outcome when all of the predictors (or $\beta$ ) are equal to 0. Uncertainty can come from sample variability, since the different samples could yield slightly different results. We also assume a linear regression model, so we could be misrepresenting the relationship between the variables. All of these things can introduce uncertainty.
+
+## Question 2
+
+The number that represents that uncertainty is the standard error. It measures the standard deviation of the sampling distribution of a statistic.
+
+## Question 3
+
+```{r}
+model1 <- lm(ERA ~ BAOpp,
+             data = pitchers_cln)
+
+broom::tidy(model1)
+```
+
+```{r}
+ggplot(data = pitchers_cln,
+       aes(x = BAOpp)) + geom_histogram(binwidth = .2)
+```
+
+I think that the coefficient makes sense, although I am slightly surprised that it is so small (0.626) compared to the intercept (4.99). This indicates to me that our predicted ERA might not be impacted very significantly by the BAOpp (particularly because in practice, batting averages rarely go above .400). One thing that I notice when I'm looking at the data is that there are a number of observations which indicate a BAOpp of 9.99. This makes no sense, as BAOpp should be an average $\leq 1$. This could affect our analysis. The relationship is what I expected, though---it makes sense that a higher BAOpp (unfavorable for the pitcher) would also correlate to a higher ERA for the pitcher (also not good for the pitcher).
+
+## Question 4
